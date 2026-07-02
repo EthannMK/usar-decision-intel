@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import folium
+import numpy as np
 import pandas as pd
 import streamlit as st
 from folium.plugins import AntPath, MarkerCluster
@@ -152,10 +153,42 @@ def load_data():
     try:
         data = _load_data_from_bigquery()
         st.session_state["data_source"] = "🟢 BigQuery (live)"
-        return data
     except Exception as e:
         st.session_state["data_source"] = f"🟡 Local CSV fallback ({type(e).__name__}: {e})"
-        return _load_data_from_csv()
+        data = _load_data_from_csv()
+    incidents, teams, scouts, bases, roads, road_status = data
+    incidents = _ensure_township_column(incidents, "nearest_township")
+    teams = _ensure_township_column(teams, "home_township")
+    return incidents, teams, scouts, bases, roads, road_status
+
+
+def _ensure_township_column(df, column_name):
+    """Adds nearest-Sagaing-township-by-geometry if `column_name` isn't already present.
+
+    The local CSVs bake townships in at generation time (data/generate_synthetic_data.py) and
+    bigquery/schema.sql's `scouts`/`bases` tables carry a real township/home_township column -
+    but the `incidents` table only stores GEOGRAPHY location (no nearest_township field), and
+    `rescue_teams` never got a home_township column added to its schema at all (it's silently
+    dropped by bigquery/load_data.py's load_rescue_teams(), which never sent that CSV field).
+    Both are computed here from lat/lon instead, so the app works the same regardless of source.
+    """
+    if column_name in df.columns:
+        return df
+    town_lats = np.array([t["lat"] for t in SAGAING_TOWNSHIPS])
+    town_lons = np.array([t["lon"] for t in SAGAING_TOWNSHIPS])
+    town_names = [t["name"] for t in SAGAING_TOWNSHIPS]
+
+    def nearest(lat, lon):
+        p1, p2 = np.radians(lat), np.radians(town_lats)
+        dphi = np.radians(town_lats - lat)
+        dlambda = np.radians(town_lons - lon)
+        a = np.sin(dphi / 2) ** 2 + np.cos(p1) * np.cos(p2) * np.sin(dlambda / 2) ** 2
+        dist_km = 2 * 6371.0 * np.arcsin(np.sqrt(a))
+        return town_names[int(np.argmin(dist_km))]
+
+    df = df.copy()
+    df[column_name] = [nearest(r.lat, r.lon) for r in df.itertuples()]
+    return df
 
 
 def minutes_remaining(deadline) -> float:
@@ -581,4 +614,68 @@ elif persona == "🚨 Command Center":
                 )
             st.rerun()
 
-# ==========================================================
+# ========================================================================================
+# RESCUE TEAM VIEW
+# ========================================================================================
+elif persona == "🚒 Rescue Team":
+    st.title("Rescue Team Orders")
+
+    if st.session_state.assignments.empty:
+        st.info("No deployment plan yet — go to Command Center and click **Run AI Optimizer** first.")
+    else:
+        team_id = st.selectbox("Select your team", st.session_state.assignments["team_id"].tolist())
+        row = st.session_state.assignments[st.session_state.assignments["team_id"] == team_id].iloc[0]
+        incident = incidents_df[incidents_df["incident_id"] == row["incident_id"]].iloc[0]
+        team = teams_df[teams_df["team_id"] == team_id].iloc[0]
+
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Assigned site", incident["nearest_township"])
+        c2.metric("ETA (real roads)", f"{row['travel_minutes']:.0f} min")
+        c3.metric("Priority score", f"{row['priority_score']:.2f}")
+
+        st.subheader("Site briefing")
+        st.write(f"**Building:** {incident['building_stories']}-story {incident['building_use']} | "
+                 f"**Collapse pattern:** {incident['collapse_pattern']} | **Material:** {incident['building_material']}")
+        st.write(f"**Trapped:** {incident['confirmed_trapped_count']} confirmed, "
+                 f"{incident['estimated_trapped_count']} estimated | **Signs of life:** {incident['signs_of_life']}")
+        hazards = json.loads(incident["hazards_present"]) if isinstance(incident["hazards_present"], str) else []
+        if hazards:
+            st.warning(f"⚠️ Hazards: {', '.join(hazards)}")
+        st.write(f"**Access:** {incident['access_difficulty']} | **Scout notes:** {incident['scout_notes']}")
+
+        st.subheader("🗺️ Route (real roads, avoids blockages)")
+        G, nodes_df = get_road_graph()
+        route_info = compute_route(G, nodes_df, team["lat"], team["lon"], incident["lat"], incident["lon"])
+        if route_info:
+            progress = st.session_state.sim_progress.get(team_id, 0.0)
+            st.write(f"**{route_info['travel_minutes']:.0f} min** · {route_info['distance_km']:.1f} km · "
+                     f"{route_info['n_road_segments']} road segments · progress: {progress*100:.0f}%")
+            current_pos = interpolate_polyline(route_info["polyline"], progress)
+            team_display = team.copy()
+            team_display["lat"], team_display["lon"] = current_pos[0], current_pos[1]
+            rmap = build_map(
+                pd.DataFrame([incident]), pd.DataFrame([team_display]), scouts_df.iloc[0:0], bases_df, roads_df,
+                all_blocked_road_ids(road_status_df), route_polyline=route_info["polyline"],
+            )
+            st_folium(rmap, width=None, height=420, returned_objects=[])
+        else:
+            st.error("🚧 No route available — destination is fully cut off by reported blockages. "
+                      "Escalate for an alternate transport plan (air, boat).")
+
+        st.subheader("Equipment status")
+        equipment = json.loads(team["equipment"])
+        st.dataframe(pd.DataFrame(equipment), use_container_width=True, hide_index=True)
+
+        missing = [e for e in equipment if e["condition"] != "operational"]
+        if missing:
+            st.warning(f"⚠️ Missing/damaged: {', '.join(m['item_name'] for m in missing)}")
+            if st.button("Generate equipment substitution plan"):
+                with st.spinner("Asking Gemini for a tactical alternative..."):
+                    plan = generate_equipment_substitution(
+                        missing[0]["item_name"], equipment,
+                        f"{incident['collapse_pattern']} collapse, {incident['building_stories']}-story "
+                        f"{incident['building_material']} building, {incident['trapped_count']} trapped.",
+                    )
+                st.json(plan)
+        else:
+            st.success("✅ Full equipment loadout operational.")

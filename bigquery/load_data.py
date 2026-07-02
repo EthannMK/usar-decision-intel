@@ -106,12 +106,14 @@ def load_rescue_teams(client):
     df = pd.read_csv(DATA_DIR / "rescue_teams.csv")
     records = [{
         "team_id": r["team_id"], "team_type": r["team_type"], "org_type": r["org_type"],
+        "home_township": r["home_township"],
         "current_location": wkt_point(r["lon"], r["lat"]), "status": r["status"],
         "capabilities": json.loads(r["capabilities"]), "equipment": json.loads(r["equipment"]),
     } for _, r in df.iterrows()]
     schema = [
         bigquery.SchemaField("team_id", "STRING"), bigquery.SchemaField("team_type", "STRING"),
-        bigquery.SchemaField("org_type", "STRING"), bigquery.SchemaField("current_location", "GEOGRAPHY"),
+        bigquery.SchemaField("org_type", "STRING"), bigquery.SchemaField("home_township", "STRING"),
+        bigquery.SchemaField("current_location", "GEOGRAPHY"),
         bigquery.SchemaField("status", "STRING"), bigquery.SchemaField("capabilities", "STRING", mode="REPEATED"),
         bigquery.SchemaField("equipment", "RECORD", mode="REPEATED", fields=[
             bigquery.SchemaField("item_name", "STRING"), bigquery.SchemaField("quantity", "INT64"),
@@ -203,4 +205,4 @@ if __name__ == "__main__":
     load_roads(client)
     load_road_status(client)
     load_bases(client)
-    print("\nAll tables loaded. Verify in the BigQuery console under the usar_decision_intel dataset.")
+  

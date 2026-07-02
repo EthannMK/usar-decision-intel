@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS `usar_decision_intel.rescue_teams` (
   team_id           STRING NOT NULL,
   team_type          STRING,                            -- Heavy | Medium | Light
   org_type           STRING,                            -- national_rescue_dept | ngo (drives map icon)
+  home_township      STRING,
   current_location   GEOGRAPHY,
   status             STRING,                            -- available(idle) | en_route(assigned) | on_site(operation) | resting
   capabilities        ARRAY<STRING>,                     -- e.g. ["structural_shoring","confined_space","canine"]
@@ -103,5 +104,4 @@ CREATE TABLE IF NOT EXISTS `usar_decision_intel.road_status` (
 );
 
 -- 7. Bases: static National Rescue Department + NGO hub locations per township
-CREATE TABLE IF NOT EXISTS `usar_decision_intel.bases` (
-  base_id     ST
+CREATE TABLE IF NOT EXISTS `usar_decision_in
