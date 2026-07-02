@@ -2,14 +2,15 @@
 USAR Decision Intelligence Platform - Streamlit app
 Three persona views in one app: Scout (field) / Command Center / Rescue Team.
 
-Runs today against the local synthetic CSVs in data/ (Sagaing region, Myanmar). Once the
-BigQuery service-account key is available, swap load_data() for BigQuery reads - the rest of
-the app doesn't change.
+Reads live operational data from BigQuery (Sagaing region, Myanmar), automatically falling
+back to the local synthetic CSVs in data/ if BigQuery isn't reachable/configured - see
+load_data() below. The active source is shown in the Command Center sidebar.
 
 Run with:  streamlit run app/streamlit_app.py
 """
 
 import json
+import os
 import sys
 import time
 from datetime import datetime, timezone
@@ -64,8 +65,71 @@ for key, val in defaults.items():
         st.session_state[key] = val
 
 
-@st.cache_data(ttl=30)
-def load_data():
+BQ_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "usar-decision-intel")
+BQ_DATASET = "usar_decision_intel"
+BQ_LOCATION = "asia-southeast1"  # Singapore - must match bigquery/schema.sql
+
+
+@st.cache_resource
+def get_bq_client():
+    from google.cloud import bigquery
+    return bigquery.Client(project=BQ_PROJECT_ID, location=BQ_LOCATION)
+
+
+def _load_data_from_bigquery():
+    """Pulls live operational data straight from BigQuery. GEOGRAPHY columns are converted to
+    plain lat/lon via ST_X/ST_Y in SQL (simpler and faster than parsing WKT client-side).
+    ARRAY/STRUCT columns (hazards_present, capabilities, equipment) come back as native Python
+    lists/dicts from the client - re-encoded to JSON strings here so every downstream function
+    (written against the CSV shape) doesn't need to change.
+
+    NOTE: written carefully against the documented BigQuery client behavior but not execution-
+    tested live (same caveat as bigquery/load_data.py) - if this throws, the app falls back to
+    local CSVs automatically (see load_data() below), so a bad query here fails safe.
+    """
+    client = get_bq_client()
+    ds = f"{BQ_PROJECT_ID}.{BQ_DATASET}"
+
+    incidents = client.query(f"""
+        SELECT * EXCEPT(location), ST_Y(location) AS lat, ST_X(location) AS lon
+        FROM `{ds}.incidents`
+    """).to_dataframe()
+    incidents["hazards_present"] = incidents["hazards_present"].apply(lambda x: json.dumps(list(x)))
+    incidents["reported_at"] = pd.to_datetime(incidents["reported_at"], utc=True)
+    incidents["golden_hour_deadline"] = pd.to_datetime(incidents["golden_hour_deadline"], utc=True)
+
+    teams = client.query(f"""
+        SELECT * EXCEPT(current_location), ST_Y(current_location) AS lat, ST_X(current_location) AS lon
+        FROM `{ds}.rescue_teams`
+    """).to_dataframe()
+    teams["capabilities"] = teams["capabilities"].apply(lambda x: json.dumps(list(x)))
+    teams["equipment"] = teams["equipment"].apply(
+        lambda arr: json.dumps([dict(item) for item in arr])
+    )
+
+    scouts = client.query(f"""
+        SELECT * EXCEPT(current_location), ST_Y(current_location) AS lat, ST_X(current_location) AS lon
+        FROM `{ds}.scouts`
+    """).to_dataframe()
+
+    bases = client.query(f"""
+        SELECT * EXCEPT(location), ST_Y(location) AS lat, ST_X(location) AS lon
+        FROM `{ds}.bases`
+    """).to_dataframe()
+
+    roads = client.query(f"""
+        SELECT road_id, from_node, to_node, road_type, surface, distance_km,
+               ST_Y(ST_STARTPOINT(geometry)) AS lat1, ST_X(ST_STARTPOINT(geometry)) AS lon1,
+               ST_Y(ST_ENDPOINT(geometry)) AS lat2, ST_X(ST_ENDPOINT(geometry)) AS lon2
+        FROM `{ds}.roads`
+    """).to_dataframe()
+
+    road_status = client.query(f"SELECT * FROM `{ds}.road_status`").to_dataframe()
+
+    return incidents, teams, scouts, bases, roads, road_status
+
+
+def _load_data_from_csv():
     incidents = pd.read_csv(DATA_DIR / "incidents.csv", parse_dates=["reported_at", "golden_hour_deadline"])
     teams = pd.read_csv(DATA_DIR / "rescue_teams.csv")
     scouts = pd.read_csv(DATA_DIR / "scouts.csv")
@@ -73,6 +137,25 @@ def load_data():
     roads = pd.read_csv(DATA_DIR / "roads.csv")
     road_status = pd.read_csv(DATA_DIR / "road_status.csv")
     return incidents, teams, scouts, bases, roads, road_status
+
+
+@st.cache_data(ttl=30)
+def load_data():
+    """Live operational data (incidents/teams/scouts/bases/roads/road_status) from BigQuery,
+    falling back to local CSVs if the client isn't configured/reachable - e.g. no service-account
+    key set up yet, or an offline demo. The road NETWORK GRAPH used for pathfinding (road_nodes.csv
+    + roads.csv, see get_road_graph()) intentionally still reads local CSVs directly: it's static
+    topology re-read on every optimizer/route call, and a per-call BigQuery round trip there would
+    only add latency without changing what's demoed - the live BigQuery integration is about the
+    operational entities (incidents, teams, scouts, bases, road status), not the fixed map geometry.
+    """
+    try:
+        data = _load_data_from_bigquery()
+        st.session_state["data_source"] = "🟢 BigQuery (live)"
+        return data
+    except Exception as e:
+        st.session_state["data_source"] = f"🟡 Local CSV fallback ({type(e).__name__}: {e})"
+        return _load_data_from_csv()
 
 
 def minutes_remaining(deadline) -> float:
@@ -199,6 +282,7 @@ st.sidebar.title("USAR Decision Intelligence")
 persona = st.sidebar.radio("View", ["📱 Scout (Field)", "🚨 Command Center", "🚒 Rescue Team"])
 st.sidebar.markdown("---")
 st.sidebar.caption("Sagaing Region, Myanmar — earthquake USAR hackathon demo")
+st.sidebar.caption(f"Data source: {st.session_state.get('data_source', 'unknown')}")
 if st.session_state.blocked_road_ids:
     st.sidebar.warning(f"🚧 {len(st.session_state.blocked_road_ids)} road(s) reported blocked this session")
 st.sidebar.markdown(
@@ -473,8 +557,8 @@ elif persona == "🚨 Command Center":
     st.caption("Routes are computed on the real road-network graph and automatically avoid blocked roads.")
     if st.button("Run AI Optimizer", type="primary"):
         with st.spinner("Scoring priorities and solving team-to-site assignment..."):
-            top_incidents = load_incidents(DATA_DIR / "incidents.csv")
-            avail = load_teams(DATA_DIR / "rescue_teams.csv")
+            top_incidents = load_incidents(df=incidents_df)
+            avail = load_teams(df=teams_df)
             assignments, status = optimize(top_incidents, avail, extra_blocked_road_ids=st.session_state.blocked_road_ids)
             st.session_state.assignments = assignments
             st.session_state.sim_progress = {tid: 0.0 for tid in assignments["team_id"]}
@@ -497,68 +581,4 @@ elif persona == "🚨 Command Center":
                 )
             st.rerun()
 
-# ========================================================================================
-# RESCUE TEAM VIEW
-# ========================================================================================
-elif persona == "🚒 Rescue Team":
-    st.title("Rescue Team Orders")
-
-    if st.session_state.assignments.empty:
-        st.info("No deployment plan yet — go to Command Center and click **Run AI Optimizer** first.")
-    else:
-        team_id = st.selectbox("Select your team", st.session_state.assignments["team_id"].tolist())
-        row = st.session_state.assignments[st.session_state.assignments["team_id"] == team_id].iloc[0]
-        incident = incidents_df[incidents_df["incident_id"] == row["incident_id"]].iloc[0]
-        team = teams_df[teams_df["team_id"] == team_id].iloc[0]
-
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Assigned site", incident["nearest_township"])
-        c2.metric("ETA (real roads)", f"{row['travel_minutes']:.0f} min")
-        c3.metric("Priority score", f"{row['priority_score']:.2f}")
-
-        st.subheader("Site briefing")
-        st.write(f"**Building:** {incident['building_stories']}-story {incident['building_use']} | "
-                 f"**Collapse pattern:** {incident['collapse_pattern']} | **Material:** {incident['building_material']}")
-        st.write(f"**Trapped:** {incident['confirmed_trapped_count']} confirmed, "
-                 f"{incident['estimated_trapped_count']} estimated | **Signs of life:** {incident['signs_of_life']}")
-        hazards = json.loads(incident["hazards_present"]) if isinstance(incident["hazards_present"], str) else []
-        if hazards:
-            st.warning(f"⚠️ Hazards: {', '.join(hazards)}")
-        st.write(f"**Access:** {incident['access_difficulty']} | **Scout notes:** {incident['scout_notes']}")
-
-        st.subheader("🗺️ Route (real roads, avoids blockages)")
-        G, nodes_df = get_road_graph()
-        route_info = compute_route(G, nodes_df, team["lat"], team["lon"], incident["lat"], incident["lon"])
-        if route_info:
-            progress = st.session_state.sim_progress.get(team_id, 0.0)
-            st.write(f"**{route_info['travel_minutes']:.0f} min** · {route_info['distance_km']:.1f} km · "
-                     f"{route_info['n_road_segments']} road segments · progress: {progress*100:.0f}%")
-            current_pos = interpolate_polyline(route_info["polyline"], progress)
-            team_display = team.copy()
-            team_display["lat"], team_display["lon"] = current_pos[0], current_pos[1]
-            rmap = build_map(
-                pd.DataFrame([incident]), pd.DataFrame([team_display]), scouts_df.iloc[0:0], bases_df, roads_df,
-                all_blocked_road_ids(road_status_df), route_polyline=route_info["polyline"],
-            )
-            st_folium(rmap, width=None, height=420, returned_objects=[])
-        else:
-            st.error("🚧 No route available — destination is fully cut off by reported blockages. "
-                      "Escalate for an alternate transport plan (air, boat).")
-
-        st.subheader("Equipment status")
-        equipment = json.loads(team["equipment"])
-        st.dataframe(pd.DataFrame(equipment), use_container_width=True, hide_index=True)
-
-        missing = [e for e in equipment if e["condition"] != "operational"]
-        if missing:
-            st.warning(f"⚠️ Missing/damaged: {', '.join(m['item_name'] for m in missing)}")
-            if st.button("Generate equipment substitution plan"):
-                with st.spinner("Asking Gemini for a tactical alternative..."):
-                    plan = generate_equipment_substitution(
-                        missing[0]["item_name"], equipment,
-                        f"{incident['collapse_pattern']} collapse, {incident['building_stories']}-story "
-                        f"{incident['building_material']} building, {incident['trapped_count']} trapped.",
-                    )
-                st.json(plan)
-        else:
-            st.success("✅ Full equipment loadout operational.")
+# ==========================================================

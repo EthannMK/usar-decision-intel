@@ -46,9 +46,15 @@ def travel_minutes(lat1, lon1, lat2, lon2):
     return (haversine_km(lat1, lon1, lat2, lon2) / AVG_SPEED_KMH) * 60
 
 
-def load_incidents(csv_path=None, top_n=60):
-    csv_path = csv_path or DATA_DIR / "incidents.csv"
-    df = pd.read_csv(csv_path, parse_dates=["reported_at", "golden_hour_deadline"])
+def load_incidents(csv_path=None, top_n=60, df=None):
+    """df: pass an already-loaded DataFrame (e.g. from BigQuery) to filter/rank it directly
+    instead of re-reading a CSV - this is how the Streamlit app feeds in live data so the
+    optimizer always sees the same source (BigQuery or CSV fallback) as the rest of the app."""
+    if df is None:
+        csv_path = csv_path or DATA_DIR / "incidents.csv"
+        df = pd.read_csv(csv_path, parse_dates=["reported_at", "golden_hour_deadline"])
+    else:
+        df = df.copy()
     df = df[df["status"].isin(["reported", "triaged"])].copy()
     if "priority_score" not in df.columns or df["priority_score"].isna().all():
         # No Gemini scores yet - use trapped_count as a cheap proxy so the optimizer is runnable today
@@ -56,9 +62,13 @@ def load_incidents(csv_path=None, top_n=60):
     return df.sort_values("priority_score", ascending=False).head(top_n).reset_index(drop=True)
 
 
-def load_teams(csv_path=None):
-    csv_path = csv_path or DATA_DIR / "rescue_teams.csv"
-    df = pd.read_csv(csv_path)
+def load_teams(csv_path=None, df=None):
+    """df: pass an already-loaded DataFrame (e.g. from BigQuery) instead of re-reading a CSV."""
+    if df is None:
+        csv_path = csv_path or DATA_DIR / "rescue_teams.csv"
+        df = pd.read_csv(csv_path)
+    else:
+        df = df.copy()
     return df[df["status"] == "available"].reset_index(drop=True)
 
 
@@ -153,15 +163,3 @@ def optimize(incidents: pd.DataFrame, teams: pd.DataFrame, now: datetime = None,
                     "objective_value": solver.ObjectiveValue(),
                 })
     return pd.DataFrame(assignments), status
-
-
-if __name__ == "__main__":
-    incidents = load_incidents()
-    teams = load_teams()
-    print(f"Optimizing over {len(incidents)} priority incidents and {len(teams)} available teams...")
-
-    assignments, status = optimize(incidents, teams)
-    print(f"Solver status: {cp_model.CpSolver().StatusName(status)}")
-    print(f"Assigned {len(assignments)} of {len(incidents)} incidents")
-    if not assignments.empty:
-        print(assignments.sort_values("priority_score", ascending=False).to_string(index=False))
