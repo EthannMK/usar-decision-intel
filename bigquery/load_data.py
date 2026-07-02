@@ -24,6 +24,7 @@ from google.cloud import bigquery
 
 PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "usar-decision-intel")
 DATASET = "usar_decision_intel"
+LOCATION = "asia-southeast1"  # must match the CREATE SCHEMA ... OPTIONS(location=...) in schema.sql
 ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT / "data"
 SCHEMA_SQL = ROOT / "bigquery" / "schema.sql"
@@ -51,7 +52,7 @@ def load_ndjson(client: bigquery.Client, table_name: str, records: list, schema:
         write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE,
         schema=schema,
     )
-    job = client.load_table_from_file(buf, table_ref, job_config=job_config)
+    job = client.load_table_from_file(buf, table_ref, job_config=job_config, location=LOCATION)
     job.result()  # raises with a real error message if the load fails
     print(f"Loaded {len(records):,} rows -> {table_name}")
 
@@ -179,7 +180,7 @@ def load_bases(client):
 
 
 if __name__ == "__main__":
-    client = bigquery.Client(project=PROJECT_ID)
+    client = bigquery.Client(project=PROJECT_ID, location=LOCATION)
     print(f"Connected to project: {client.project}")
     run_ddl(client)
     load_incidents(client)
@@ -187,6 +188,4 @@ if __name__ == "__main__":
     load_scouts(client)
     load_road_nodes(client)
     load_roads(client)
-    load_road_status(client)
-    load_bases(client)
-    print("\nAll tables loaded. Verify in the BigQuery console under the usar_decision_intel dataset.")
+    load_road_sta
