@@ -32,7 +32,9 @@ CREATE TABLE IF NOT EXISTS `usar_decision_intel.incidents` (
   submitted_by            STRING
 )
 PARTITION BY DATE(reported_at)
-CLUSTER BY status, priority_score;
+-- CLUSTER BY only supports certain types; priority_score is FLOAT64 which BigQuery rejects
+-- for clustering, so we cluster on the two STRING columns queried most often instead.
+CLUSTER BY status, building_use;
 
 -- 2. Rescue teams: Heavy/Medium/Light tactical units, gov or NGO affiliated
 CREATE TABLE IF NOT EXISTS `usar_decision_intel.rescue_teams` (
@@ -102,9 +104,4 @@ CREATE TABLE IF NOT EXISTS `usar_decision_intel.road_status` (
 
 -- 7. Bases: static National Rescue Department + NGO hub locations per township
 CREATE TABLE IF NOT EXISTS `usar_decision_intel.bases` (
-  base_id     STRING NOT NULL,
-  name        STRING,
-  org_type    STRING,                                       -- national_rescue_dept | ngo
-  township    STRING,
-  location    GEOGRAPHY NOT NULL
-);
+  base_id     STRING NOT
