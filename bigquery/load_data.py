@@ -33,14 +33,18 @@ SCHEMA_SQL = ROOT / "bigquery" / "schema.sql"
 def run_ddl(client: bigquery.Client):
     """Creates the dataset + all tables from schema.sql (idempotent - IF NOT EXISTS everywhere).
 
-    BUGFIX: an earlier version of this filtered out every statement whose chunk started with a
-    "--" comment line - but every statement here has a comment directly above it, so that filter
+    BUGFIX 1: an earlier version filtered out every statement whose chunk started with a "--"
+    comment line - but every statement here has a comment directly above it, so that filter
     silently skipped the ENTIRE schema (including CREATE SCHEMA itself) while still printing a
-    false success message. BigQuery's query() handles embedded "--" comments natively, so no
-    filtering is needed at all beyond dropping whitespace-only chunks.
+    false success message.
+    BUGFIX 2: splitting the raw file on ";" broke if any "-- comment" line itself contained a
+    semicolon (it did, briefly) - the comment text after that semicolon got sent to BigQuery as
+    if it were SQL. Fixed by stripping "-- ..." comments line-by-line BEFORE splitting on ";",
+    so a semicolon inside a comment can never fracture a statement again.
     """
     ddl = SCHEMA_SQL.read_text()
-    statements = [s.strip() for s in ddl.split(";") if s.strip()]
+    ddl_no_comments = "\n".join(line.split("--", 1)[0] for line in ddl.splitlines())
+    statements = [s.strip() for s in ddl_no_comments.split(";") if s.strip()]
     print(f"Executing {len(statements)} DDL statements...")
     for i, stmt in enumerate(statements, 1):
         client.query(stmt).result()
