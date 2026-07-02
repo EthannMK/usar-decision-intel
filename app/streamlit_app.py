@@ -520,14 +520,14 @@ elif persona == "🚨 Command Center":
     st.subheader("⚡ Time to Insight: CPU (pandas) vs GPU (cudf.pandas)")
     st.caption(
         "Required NVIDIA acceleration benchmark for this hackathon's judging criteria — computes the "
-        "full incident x team distance matrix. CPU number is live/real; GPU number needs an actual GPU "
-        "(run `benchmark/cpu_vs_gpu_benchmark.py` with `python -m cudf.pandas` on Colab)."
+        "full incident x team distance matrix. CPU number below is live/real, computed right now in "
+        "this app. GPU number comes from benchmark/cpu_vs_gpu_benchmark.py run on a real GPU (Colab) "
+        "with `python -m cudf.pandas` — see benchmark/README.md — since this machine has no GPU."
     )
     bcol1, bcol2, bcol3 = st.columns([1, 1, 1])
     if bcol1.button("▶ Run CPU benchmark now"):
         t0 = time.perf_counter()
         n_i, n_t = len(df), len(teams_df)
-        import numpy as np
 
         lat_i = df["lat"].to_numpy()[:, None]
         lon_i = df["lon"].to_numpy()[:, None]
@@ -544,7 +544,28 @@ elif persona == "🚨 Command Center":
         shape = st.session_state.get("cpu_matrix_shape", (len(df), len(teams_df)))
         bcol2.metric("CPU (pandas/numpy)", f"{st.session_state.cpu_benchmark_seconds*1000:.1f} ms",
                      help=f"{shape[0]:,} incidents x {shape[1]:,} teams distance matrix")
-        bcol3.metric("GPU (cudf.pandas)", "run on Colab")
+
+    gpu_result_path = ROOT / "benchmark" / "benchmark_result.json"
+    gpu_result = None
+    cpu_result = None
+    if gpu_result_path.exists():
+        try:
+            gpu_data = json.loads(gpu_result_path.read_text())
+            gpu_result = gpu_data.get("gpu")
+            cpu_result = gpu_data.get("cpu")
+        except (json.JSONDecodeError, OSError):
+            gpu_result = None
+    if gpu_result:
+        gpu_ms = gpu_result["elapsed_seconds"] * 1000
+        help_text = f"{gpu_result['n_incidents']:,} incidents x {gpu_result['n_teams']:,} teams (from Colab run)"
+        if cpu_result and cpu_result.get("elapsed_seconds", 0) > 0:
+            speedup = cpu_result["elapsed_seconds"] / gpu_result["elapsed_seconds"]
+            help_text += f" — {speedup:.1f}x faster than the CPU run captured in the same Colab session"
+        bcol3.metric("GPU (cudf.pandas)", f"{gpu_ms:.1f} ms", help=help_text)
+    else:
+        bcol3.metric("GPU (cudf.pandas)", "run on Colab",
+                     help="See benchmark/README.md — run benchmark/cpu_vs_gpu_benchmark.py on a Colab "
+                          "GPU runtime, then drop the resulting benchmark_result.json in benchmark/.")
 
     st.markdown("---")
     st.subheader("🗺️ Live operations map")
