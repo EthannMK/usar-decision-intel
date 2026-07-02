@@ -71,6 +71,16 @@ def load_ndjson(client: bigquery.Client, table_name: str, records: list, schema:
 
 
 def load_incidents(client):
+    """NOTE: priority_score / priority_rationale / scout_image_uri are written by Gemini later
+    (see ai/gemini_priority_scoring.py), not present in the synthetic CSV - loaded as NULL here.
+
+    BUGFIX: this schema list used to omit those 3 columns entirely. load_ndjson() below uses
+    WRITE_TRUNCATE with an explicit schema, and a BigQuery load job with WRITE_TRUNCATE replaces
+    the DESTINATION TABLE's schema to match the job's schema - so even though bigquery/schema.sql's
+    CREATE TABLE originally defined those 3 columns, every real data load was silently dropping
+    them from the live table. That's why they showed "Unrecognized name" in queries even though
+    they were right there in schema.sql. Now included as explicit NULLs so the columns survive.
+    """
     df = pd.read_csv(DATA_DIR / "incidents.csv")
     records = [{
         "incident_id": r["incident_id"], "reported_at": r["reported_at"],
@@ -81,7 +91,9 @@ def load_incidents(client):
         "estimated_trapped_count": int(r["estimated_trapped_count"]),
         "trapped_count": int(r["trapped_count"]), "signs_of_life": r["signs_of_life"],
         "hazards_present": json.loads(r["hazards_present"]), "access_difficulty": r["access_difficulty"],
-        "scout_notes": r["scout_notes"], "golden_hour_deadline": r["golden_hour_deadline"],
+        "scout_notes": r["scout_notes"], "scout_image_uri": None,
+        "priority_score": None, "priority_rationale": None,
+        "golden_hour_deadline": r["golden_hour_deadline"],
         "status": r["status"], "people_saved": int(r.get("people_saved", 0) or 0),
         "bodies_found": int(r.get("bodies_found", 0) or 0),
         "synced_from_offline": bool(r["synced_from_offline"]), "submitted_by": r["submitted_by"],
@@ -95,6 +107,8 @@ def load_incidents(client):
         bigquery.SchemaField("signs_of_life", "STRING"),
         bigquery.SchemaField("hazards_present", "STRING", mode="REPEATED"),
         bigquery.SchemaField("access_difficulty", "STRING"), bigquery.SchemaField("scout_notes", "STRING"),
+        bigquery.SchemaField("scout_image_uri", "STRING"),
+        bigquery.SchemaField("priority_score", "FLOAT64"), bigquery.SchemaField("priority_rationale", "STRING"),
         bigquery.SchemaField("golden_hour_deadline", "TIMESTAMP"), bigquery.SchemaField("status", "STRING"),
         bigquery.SchemaField("people_saved", "INT64"), bigquery.SchemaField("bodies_found", "INT64"),
         bigquery.SchemaField("synced_from_offline", "BOOL"), bigquery.SchemaField("submitted_by", "STRING"),
@@ -205,4 +219,4 @@ if __name__ == "__main__":
     load_roads(client)
     load_road_status(client)
     load_bases(client)
-  
+    print("\nAll tables loaded. Verify in the BigQuery console under the usar_decision_intel dataset.")
