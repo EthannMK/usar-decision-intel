@@ -31,11 +31,20 @@ SCHEMA_SQL = ROOT / "bigquery" / "schema.sql"
 
 
 def run_ddl(client: bigquery.Client):
-    """Creates the dataset + all tables from schema.sql (idempotent - IF NOT EXISTS everywhere)."""
+    """Creates the dataset + all tables from schema.sql (idempotent - IF NOT EXISTS everywhere).
+
+    BUGFIX: an earlier version of this filtered out every statement whose chunk started with a
+    "--" comment line - but every statement here has a comment directly above it, so that filter
+    silently skipped the ENTIRE schema (including CREATE SCHEMA itself) while still printing a
+    false success message. BigQuery's query() handles embedded "--" comments natively, so no
+    filtering is needed at all beyond dropping whitespace-only chunks.
+    """
     ddl = SCHEMA_SQL.read_text()
-    statements = [s.strip() for s in ddl.split(";") if s.strip() and not s.strip().startswith("--")]
-    for stmt in statements:
+    statements = [s.strip() for s in ddl.split(";") if s.strip()]
+    print(f"Executing {len(statements)} DDL statements...")
+    for i, stmt in enumerate(statements, 1):
         client.query(stmt).result()
+        print(f"  [{i}/{len(statements)}] OK")
     print(f"Schema created/verified in {PROJECT_ID}.{DATASET}")
 
 
@@ -188,4 +197,6 @@ if __name__ == "__main__":
     load_scouts(client)
     load_road_nodes(client)
     load_roads(client)
-    load_road_sta
+    load_road_status(client)
+    load_bases(client)
+    print("\nAll tables loaded. Verify in the BigQuery console under the usar_decision_intel dataset.")
