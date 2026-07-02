@@ -1,0 +1,20 @@
+base_id,name,org_type,township,lat,lon
+base_000,Sagaing National USAR HQ,national_rescue_dept,Sagaing,21.879711,95.99099
+base_001,Myanmar Community Rescue Alliance - Sagaing Hub,ngo,Sagaing,21.903355,95.980164
+base_002,Monywa National USAR HQ,national_rescue_dept,Monywa,22.118136,95.140075
+base_003,Red Cross - Monywa Hub,ngo,Monywa,22.124483,95.142117
+base_004,Shwebo National USAR HQ,national_rescue_dept,Shwebo,22.580431,95.714799
+base_005,Myanmar Community Rescue Alliance - Shwebo Hub,ngo,Shwebo,22.58356,95.697107
+base_006,Kalay National USAR HQ,national_rescue_dept,Kalay,23.192705,94.056735
+base_007,Myanmar Community Rescue Alliance - Kalay Hub,ngo,Kalay,23.195503,94.071785
+base_008,Katha National USAR HQ,national_rescue_dept,Katha,24.201461,96.334624
+base_009,Myanmar Community Rescue Alliance - Katha Hub,ngo,Katha,24.202931,96.329555
+base_010,Myinmu National USAR HQ,national_rescue_dept,Myinmu,22.066684,95.648729
+base_011,Red Cross - Myinmu Hub,ngo,Myinmu,22.067432,95.653742
+base_012,Ye-U National USAR HQ,national_rescue_dept,Ye-U,22.801956,95.42757
+base_013,Myanmar Community Rescue Alliance - Ye-U Hub,ngo,Ye-U,22.801623,95.425544
+base_014,Kanbalu National USAR HQ,national_rescue_dept,Kanbalu,23.206872,95.584272
+base_015,World Emergency Aid - Kanbalu Hub,ngo,Kanbalu,23.194042,95.595506
+base_016,Yangon National Coordination Center,national_rescue_dept,Yangon,16.850139,96.181901
+base_017,Mandalay National Coordination Center,national_rescue_dept,Mandalay,21.965319,96.097773
+base_018,Naypyidaw National Coordination Center,national_rescue_dept,Naypyidaw,19.769092,96.083375
