@@ -104,4 +104,10 @@ CREATE TABLE IF NOT EXISTS `usar_decision_intel.road_status` (
 );
 
 -- 7. Bases: static National Rescue Department + NGO hub locations per township
-CREATE TABLE IF NOT EXISTS `usar_decision_in
+CREATE TABLE IF NOT EXISTS `usar_decision_intel.bases` (
+  base_id     STRING NOT NULL,
+  name        STRING,
+  org_type    STRING,                                       -- national_rescue_dept | ngo
+  township    STRING,
+  location    GEOGRAPHY NOT NULL
+);

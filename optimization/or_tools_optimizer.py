@@ -163,3 +163,15 @@ def optimize(incidents: pd.DataFrame, teams: pd.DataFrame, now: datetime = None,
                     "objective_value": solver.ObjectiveValue(),
                 })
     return pd.DataFrame(assignments), status
+
+
+if __name__ == "__main__":
+    incidents = load_incidents()
+    teams = load_teams()
+    print(f"Optimizing over {len(incidents)} priority incidents and {len(teams)} available teams...")
+
+    assignments, status = optimize(incidents, teams)
+    print(f"Solver status: {cp_model.CpSolver().StatusName(status)}")
+    print(f"Assigned {len(assignments)} of {len(incidents)} incidents")
+    if not assignments.empty:
+        print(assignments.sort_values("priority_score", ascending=False).to_string(index=False))

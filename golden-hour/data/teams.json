@@ -1,0 +1,434 @@
+[
+  {
+    "team_id": "T01",
+    "team_name": "Heavy-1 USAR",
+    "team_type": "Heavy",
+    "base_lat": 22.068865,
+    "base_lon": 96.206261,
+    "personnel": 59,
+    "status": "available",
+    "equipment": [
+      {
+        "item": "50T mobile crane",
+        "qty": 3,
+        "operational": true
+      },
+      {
+        "item": "concrete cutter",
+        "qty": 1,
+        "operational": true
+      },
+      {
+        "item": "hydraulic breaker",
+        "qty": 3,
+        "operational": true
+      },
+      {
+        "item": "search camera",
+        "qty": 2,
+        "operational": true
+      },
+      {
+        "item": "thermal imager",
+        "qty": 2,
+        "operational": true
+      },
+      {
+        "item": "K9 unit",
+        "qty": 3,
+        "operational": true
+      }
+    ]
+  },
+  {
+    "team_id": "T02",
+    "team_name": "Heavy-2 USAR",
+    "team_type": "Heavy",
+    "base_lat": 21.902284,
+    "base_lon": 96.171777,
+    "personnel": 60,
+    "status": "available",
+    "equipment": [
+      {
+        "item": "50T mobile crane",
+        "qty": 3,
+        "operational": true
+      },
+      {
+        "item": "concrete cutter",
+        "qty": 3,
+        "operational": true
+      },
+      {
+        "item": "hydraulic breaker",
+        "qty": 2,
+        "operational": true
+      },
+      {
+        "item": "search camera",
+        "qty": 3,
+        "operational": true
+      },
+      {
+        "item": "thermal imager",
+        "qty": 1,
+        "operational": true
+      },
+      {
+        "item": "K9 unit",
+        "qty": 2,
+        "operational": true
+      }
+    ]
+  },
+  {
+    "team_id": "T03",
+    "team_name": "Heavy-3 USAR",
+    "team_type": "Heavy",
+    "base_lat": 22.039948,
+    "base_lon": 96.111974,
+    "personnel": 60,
+    "status": "available",
+    "equipment": [
+      {
+        "item": "50T mobile crane",
+        "qty": 3,
+        "operational": true
+      },
+      {
+        "item": "concrete cutter",
+        "qty": 3,
+        "operational": true
+      },
+      {
+        "item": "search camera",
+        "qty": 3,
+        "operational": true
+      },
+      {
+        "item": "thermal imager",
+        "qty": 2,
+        "operational": true
+      },
+      {
+        "item": "K9 unit",
+        "qty": 2,
+        "operational": true
+      },
+      {
+        "item": "shoring kit",
+        "qty": 3,
+        "operational": true
+      }
+    ]
+  },
+  {
+    "team_id": "T04",
+    "team_name": "Medium-1 USAR",
+    "team_type": "Medium",
+    "base_lat": 21.945741,
+    "base_lon": 95.940996,
+    "personnel": 37,
+    "status": "available",
+    "equipment": [
+      {
+        "item": "rotary rescue saw",
+        "qty": 3,
+        "operational": true
+      },
+      {
+        "item": "search camera",
+        "qty": 1,
+        "operational": true
+      },
+      {
+        "item": "cribbing kit",
+        "qty": 1,
+        "operational": true
+      },
+      {
+        "item": "jackhammer",
+        "qty": 3,
+        "operational": true
+      },
+      {
+        "item": "K9 unit",
+        "qty": 2,
+        "operational": true
+      }
+    ]
+  },
+  {
+    "team_id": "T05",
+    "team_name": "Medium-2 USAR",
+    "team_type": "Medium",
+    "base_lat": 21.798102,
+    "base_lon": 96.226362,
+    "personnel": 36,
+    "status": "available",
+    "equipment": [
+      {
+        "item": "rotary rescue saw",
+        "qty": 2,
+        "operational": true
+      },
+      {
+        "item": "search camera",
+        "qty": 2,
+        "operational": true
+      },
+      {
+        "item": "jackhammer",
+        "qty": 1,
+        "operational": true
+      },
+      {
+        "item": "K9 unit",
+        "qty": 2,
+        "operational": true
+      }
+    ]
+  },
+  {
+    "team_id": "T06",
+    "team_name": "Medium-3 USAR",
+    "team_type": "Medium",
+    "base_lat": 22.006019,
+    "base_lon": 95.963874,
+    "personnel": 37,
+    "status": "available",
+    "equipment": [
+      {
+        "item": "pneumatic lift bags",
+        "qty": 1,
+        "operational": true
+      },
+      {
+        "item": "rotary rescue saw",
+        "qty": 1,
+        "operational": true
+      },
+      {
+        "item": "search camera",
+        "qty": 1,
+        "operational": true
+      },
+      {
+        "item": "cribbing kit",
+        "qty": 1,
+        "operational": true
+      },
+      {
+        "item": "jackhammer",
+        "qty": 1,
+        "operational": true
+      }
+    ]
+  },
+  {
+    "team_id": "T07",
+    "team_name": "Medium-4 USAR",
+    "team_type": "Medium",
+    "base_lat": 22.006904,
+    "base_lon": 96.051666,
+    "personnel": 31,
+    "status": "available",
+    "equipment": [
+      {
+        "item": "pneumatic lift bags",
+        "qty": 2,
+        "operational": true
+      },
+      {
+        "item": "search camera",
+        "qty": 3,
+        "operational": true
+      },
+      {
+        "item": "cribbing kit",
+        "qty": 1,
+        "operational": true
+      },
+      {
+        "item": "jackhammer",
+        "qty": 3,
+        "operational": true
+      },
+      {
+        "item": "K9 unit",
+        "qty": 3,
+        "operational": true
+      }
+    ]
+  },
+  {
+    "team_id": "T08",
+    "team_name": "Medium-5 USAR",
+    "team_type": "Medium",
+    "base_lat": 22.004453,
+    "base_lon": 95.991773,
+    "personnel": 39,
+    "status": "available",
+    "equipment": [
+      {
+        "item": "pneumatic lift bags",
+        "qty": 2,
+        "operational": true
+      },
+      {
+        "item": "rotary rescue saw",
+        "qty": 1,
+        "operational": true
+      },
+      {
+        "item": "search camera",
+        "qty": 3,
+        "operational": true
+      },
+      {
+        "item": "cribbing kit",
+        "qty": 1,
+        "operational": true
+      },
+      {
+        "item": "jackhammer",
+        "qty": 2,
+        "operational": true
+      },
+      {
+        "item": "K9 unit",
+        "qty": 2,
+        "operational": true
+      }
+    ]
+  },
+  {
+    "team_id": "T09",
+    "team_name": "Light-1 USAR",
+    "team_type": "Light",
+    "base_lat": 21.993528,
+    "base_lon": 96.026264,
+    "personnel": 17,
+    "status": "available",
+    "equipment": [
+      {
+        "item": "hand tools",
+        "qty": 1,
+        "operational": true
+      },
+      {
+        "item": "pry bars",
+        "qty": 2,
+        "operational": true
+      },
+      {
+        "item": "rope rescue kit",
+        "qty": 1,
+        "operational": true
+      },
+      {
+        "item": "first aid station",
+        "qty": 2,
+        "operational": true
+      }
+    ]
+  },
+  {
+    "team_id": "T10",
+    "team_name": "Light-2 USAR",
+    "team_type": "Light",
+    "base_lat": 22.040663,
+    "base_lon": 95.946198,
+    "personnel": 22,
+    "status": "available",
+    "equipment": [
+      {
+        "item": "hand tools",
+        "qty": 3,
+        "operational": true
+      },
+      {
+        "item": "pry bars",
+        "qty": 1,
+        "operational": true
+      },
+      {
+        "item": "rope rescue kit",
+        "qty": 3,
+        "operational": true
+      },
+      {
+        "item": "first aid station",
+        "qty": 2,
+        "operational": true
+      },
+      {
+        "item": "acoustic listening device",
+        "qty": 2,
+        "operational": true
+      }
+    ]
+  },
+  {
+    "team_id": "T11",
+    "team_name": "Light-3 USAR",
+    "team_type": "Light",
+    "base_lat": 22.003173,
+    "base_lon": 96.125494,
+    "personnel": 22,
+    "status": "available",
+    "equipment": [
+      {
+        "item": "rope rescue kit",
+        "qty": 1,
+        "operational": true
+      },
+      {
+        "item": "first aid station",
+        "qty": 2,
+        "operational": true
+      },
+      {
+        "item": "acoustic listening device",
+        "qty": 1,
+        "operational": true
+      }
+    ]
+  },
+  {
+    "team_id": "T12",
+    "team_name": "Light-4 USAR",
+    "team_type": "Light",
+    "base_lat": 21.869697,
+    "base_lon": 96.167321,
+    "personnel": 16,
+    "status": "available",
+    "equipment": [
+      {
+        "item": "hand tools",
+        "qty": 3,
+        "operational": true
+      },
+      {
+        "item": "pry bars",
+        "qty": 2,
+        "operational": true
+      },
+      {
+        "item": "rope rescue kit",
+        "qty": 1,
+        "operational": true
+      },
+      {
+        "item": "first aid station",
+        "qty": 2,
+        "operational": true
+      },
+      {
+        "item": "acoustic listening device",
+        "qty": 3,
+        "operational": true
+      }
+    ]
+  }
+]
